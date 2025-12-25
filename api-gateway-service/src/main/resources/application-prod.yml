@@ -1,0 +1,33 @@
+server:
+  port: 8080
+
+spring:
+  config:
+    import: optional:file:.env[.properties]
+  cloud:
+    gateway:
+      server:
+        webflux:
+          httpclient:
+            connect-timeout: 1000
+            response-timeout: 10s
+
+          routes:
+            - id: user-service
+              uri: ${USER_SERVICE_URI}
+              predicates:
+                - Path=/api/users/**
+            - id: board-service-jwt
+              uri: ${BOARD_SERVICE_URI}
+              predicates:
+                - Path=/api/boards
+                - Method=POST
+              filters:
+                - JwtAuthenticationFilter
+            - id: board-service
+              uri: ${BOARD_SERVICE_URI}
+              predicates:
+                - Path=/api/boards/**
+
+jwt:
+  secret: ${JWT_SECRET}
