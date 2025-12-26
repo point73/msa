@@ -17,7 +17,7 @@ services:
     container_name: user-db
     environment:
       MYSQL_ROOT_PASSWORD: ${USER_DB_PASSWORD}
-      MYSQL_DATABASE: user_db
+      MYSQL_DATABASE: user-db
       MYSQL_USER: ${USER_DB_USERNAME}
       MYSQL_PASSWORD: ${USER_DB_PASSWORD}
     volumes:
@@ -36,7 +36,7 @@ services:
     container_name: board-db
     environment:
       MYSQL_ROOT_PASSWORD: ${BOARD_DB_PASSWORD}
-      MYSQL_DATABASE: board_db
+      MYSQL_DATABASE: board-db
       MYSQL_USER: ${BOARD_DB_USERNAME}
       MYSQL_PASSWORD: ${BOARD_DB_PASSWORD}
     volumes:
@@ -55,7 +55,7 @@ services:
     container_name: point-db
     environment:
       MYSQL_ROOT_PASSWORD: ${POINT_DB_PASSWORD}
-      MYSQL_DATABASE: point_db
+      MYSQL_DATABASE: point-db
       MYSQL_USER: ${POINT_DB_USERNAME}
       MYSQL_PASSWORD: ${POINT_DB_PASSWORD}
     volumes:
