@@ -4,6 +4,8 @@ WORKDIR /app
 
 # 캐시를 위해 먼저 빌드 설정 파일만 복사
 COPY gradlew ./
+RUN chmod +x ./gradlew
+
 COPY gradle ./gradle
 COPY build.gradle* settings.gradle* ./
 

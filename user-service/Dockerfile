@@ -4,6 +4,8 @@ WORKDIR /app
 
 # 캐시를 위해 먼저 빌드 설정 파일만 복사
 COPY gradlew ./
+RUN chmod +x ./gradlew
+
 COPY gradle ./gradle
 COPY build.gradle* settings.gradle* ./
 
@@ -25,7 +27,7 @@ USER appuser
 # 빌드 산출물 복사
 COPY --from=builder /app/build/libs/*.jar app.jar
 
-EXPOSE 8080
+EXPOSE 8090
 
 # JVM 옵션은 필요시 환경변수로 조절 가능
 ENV JAVA_OPTS=""
