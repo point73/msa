@@ -138,7 +138,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ env.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT }}
+          port: ${{ secrets.SSH_PORT || 22 }}
           script: |
             set -e
 
@@ -184,4 +184,3 @@ jobs:
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f
-          
