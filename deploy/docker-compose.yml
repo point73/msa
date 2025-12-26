@@ -3,7 +3,7 @@ services:
     image: ${DOCKERHUB_USERNAME}/api-gateway-service:${TAG}
     container_name: api-gateway
     ports:
-      - "8000:8000"
+      - "8000:8080"
     env_file: .env
     networks: [app-net]
     depends_on:
