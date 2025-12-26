@@ -1,0 +1,36 @@
+services:
+  api-gateway:
+    image: ${DOCKERHUB_USERNAME}/api-gateway-service:${TAG}
+    container_name: api-gateway
+    ports:
+      - "8000:8000"       # 외부 공개: 게이트웨이만
+    env_file: .env
+    networks: [app-net]
+
+  user-service:
+    image: ${DOCKERHUB_USERNAME}/user-service:${TAG}
+    container_name: user-server
+    env_file: .env
+    networks: [app-net]
+    expose:
+      - "8080"            # 같은 네트워크 내부용(선택)
+
+  board-service:
+    image: ${DOCKERHUB_USERNAME}/board-service:${TAG}
+    container_name: board-server
+    env_file: .env
+    networks: [app-net]
+    expose:
+      - "8080"
+
+  point-service:
+    image: ${DOCKERHUB_USERNAME}/point-service:${TAG}
+    container_name: point-server
+    env_file: .env
+    networks: [app-net]
+    expose:
+      - "8080"
+
+networks:
+  app-net:
+    external: true

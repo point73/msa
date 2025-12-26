@@ -1,0 +1,187 @@
+name: ci-cd (dockerhub + home server)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+  SSH_USER: ${{ vars.SSH_USER }}
+  DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+  TAG: ${{ vars.TAG || 'latest' }}
+  APP_NET: ${{ vars.APP_NET || 'app-net' }}
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      gateway: ${{ steps.filter.outputs.gateway }}
+      user: ${{ steps.filter.outputs.user }}
+      board: ${{ steps.filter.outputs.board }}
+      point: ${{ steps.filter.outputs.point }}
+      all: ${{ steps.filter.outputs.all }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect changed services
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            all:
+              - '.github/**'
+              - 'deploy/**'
+              - 'gradle/**'
+              - '**/gradle/**'
+              - '**/gradlew'
+              - '**/settings.gradle*'
+              - '**/build.gradle*'
+              - '**/Dockerfile'
+            gateway:
+              - 'api-gateway-service/**'
+            user:
+              - 'user-service/**'
+            board:
+              - 'board-service/**'
+            point:
+              - 'point-service/**'
+
+  build_and_push:
+    needs: changes
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - key: gateway
+            name: api-gateway-service
+            dir: api-gateway-service
+          - key: user
+            name: user-service
+            dir: user-service
+          - key: board
+            name: board-service
+            dir: board-service
+          - key: point
+            name: point-service
+            dir: point-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decide build
+        id: decide
+        shell: bash
+        run: |
+          if [ "${{ needs.changes.outputs.all }}" = "true" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          case "${{ matrix.key }}" in
+            gateway) v="${{ needs.changes.outputs.gateway }}" ;;
+            user)    v="${{ needs.changes.outputs.user }}" ;;
+            board)   v="${{ needs.changes.outputs.board }}" ;;
+            point)   v="${{ needs.changes.outputs.point }}" ;;
+          esac
+
+          if [ "$v" = "true" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker Buildx
+        if: steps.decide.outputs.build == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        if: steps.decide.outputs.build == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & Push
+        if: steps.decide.outputs.build == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.dir }}
+          file: ./${{ matrix.dir }}/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_USERNAME }}/${{ matrix.name }}:latest
+            ${{ env.DOCKERHUB_USERNAME }}/${{ matrix.name }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build_and_push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upload docker-compose.yml to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: "deploy/docker-compose.yml"
+          target: "${{ env.DEPLOY_PATH }}/"
+
+      - name: Create .env, ensure network, and deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -e
+
+            mkdir -p "${{ env.DEPLOY_PATH }}"
+            cd "${{ env.DEPLOY_PATH }}"
+
+            docker network create "${{ env.APP_NET }}" >/dev/null 2>&1 || true
+
+            if [ -f "deploy/docker-compose.yml" ]; then
+              mv deploy/docker-compose.yml docker-compose.yml
+              rmdir deploy 2>/dev/null || true
+            fi
+
+            cat > .env << EOF
+            DOCKERHUB_USERNAME=${{ env.DOCKERHUB_USERNAME }}
+            TAG=${{ env.TAG }}
+
+            # --- DB (service별) ---
+            USER_DB_URL=${{ secrets.USER_DB_URL }}
+            USER_DB_USERNAME=${{ secrets.USER_DB_USERNAME }}
+            USER_DB_PASSWORD=${{ secrets.USER_DB_PASSWORD }}
+
+            BOARD_DB_URL=${{ secrets.BOARD_DB_URL }}
+            BOARD_DB_USERNAME=${{ secrets.BOARD_DB_USERNAME }}
+            BOARD_DB_PASSWORD=${{ secrets.BOARD_DB_PASSWORD }}
+
+            POINT_DB_URL=${{ secrets.POINT_DB_URL }}
+            POINT_DB_USERNAME=${{ secrets.POINT_DB_USERNAME }}
+            POINT_DB_PASSWORD=${{ secrets.POINT_DB_PASSWORD }}
+
+            # --- Kafka ---
+            KAFKA_BOOTSTRAP_SERVERS=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
+
+            # --- internal service URLs (gateway/서비스 간 통신) ---
+            USER_SERVICE_URI=${{ secrets.USER_SERVICE_URI }}
+            BOARD_SERVICE_URI=${{ secrets.BOARD_SERVICE_URI }}
+            POINT_SERVICE_URL=${{ secrets.POINT_SERVICE_URL }}
+
+            # --- JWT ---
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            EOF
+
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
+          
