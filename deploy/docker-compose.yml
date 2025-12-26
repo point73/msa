@@ -6,42 +6,68 @@ services:
       - "8000:8000"
     env_file: .env
     networks: [app-net]
+    depends_on:
+      - user-service
+      - board-service
+      - point-service
+    restart: unless-stopped
 
   user-db:
     image: mysql:8.0
     container_name: user-db
     environment:
       MYSQL_ROOT_PASSWORD: ${USER_DB_PASSWORD}
-      MYSQL_DATABASE: ${USER_DB_NAME}
+      MYSQL_DATABASE: user_db
       MYSQL_USER: ${USER_DB_USERNAME}
       MYSQL_PASSWORD: ${USER_DB_PASSWORD}
     volumes:
       - user_db_data:/var/lib/mysql
     networks: [app-net]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
 
   board-db:
     image: mysql:8.0
     container_name: board-db
     environment:
       MYSQL_ROOT_PASSWORD: ${BOARD_DB_PASSWORD}
-      MYSQL_DATABASE: ${BOARD_DB_NAME}
+      MYSQL_DATABASE: board_db
       MYSQL_USER: ${BOARD_DB_USERNAME}
       MYSQL_PASSWORD: ${BOARD_DB_PASSWORD}
     volumes:
       - board_db_data:/var/lib/mysql
     networks: [app-net]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
 
   point-db:
     image: mysql:8.0
     container_name: point-db
     environment:
       MYSQL_ROOT_PASSWORD: ${POINT_DB_PASSWORD}
-      MYSQL_DATABASE: ${POINT_DB_NAME}
+      MYSQL_DATABASE: point_db
       MYSQL_USER: ${POINT_DB_USERNAME}
       MYSQL_PASSWORD: ${POINT_DB_PASSWORD}
     volumes:
       - point_db_data:/var/lib/mysql
     networks: [app-net]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
 
   user-service:
     image: ${DOCKERHUB_USERNAME}/user-service:${TAG}
@@ -49,7 +75,10 @@ services:
     env_file: .env
     networks: [app-net]
     expose: ["8080"]
-    depends_on: [user-db]
+    depends_on:
+      user-db:
+        condition: service_healthy
+    restart: unless-stopped
 
   board-service:
     image: ${DOCKERHUB_USERNAME}/board-service:${TAG}
@@ -57,7 +86,10 @@ services:
     env_file: .env
     networks: [app-net]
     expose: ["8080"]
-    depends_on: [board-db]
+    depends_on:
+      board-db:
+        condition: service_healthy
+    restart: unless-stopped
 
   point-service:
     image: ${DOCKERHUB_USERNAME}/point-service:${TAG}
@@ -65,7 +97,10 @@ services:
     env_file: .env
     networks: [app-net]
     expose: ["8080"]
-    depends_on: [point-db]
+    depends_on:
+      point-db:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   user_db_data:
