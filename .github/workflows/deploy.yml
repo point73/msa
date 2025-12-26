@@ -180,7 +180,7 @@ jobs:
             # --- internal service URLs (gateway/서비스 간 통신) ---
             USER_SERVICE_URI=${{ secrets.USER_SERVICE_URI }}
             BOARD_SERVICE_URI=${{ secrets.BOARD_SERVICE_URI }}
-            POINT_SERVICE_URL=${{ secrets.POINT_SERVICE_URL }}
+            POINT_SERVICE_URL=${{ secrets.POINT_SERVICE_URI }}
 
             # --- JWT ---
             JWT_SECRET=${{ secrets.JWT_SECRET }}
