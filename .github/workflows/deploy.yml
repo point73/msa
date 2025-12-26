@@ -169,6 +169,11 @@ jobs:
             POINT_DB_USERNAME=${{ secrets.POINT_DB_USERNAME }}
             POINT_DB_PASSWORD=${{ secrets.POINT_DB_PASSWORD }}
 
+            # --- JPA ddl-auto (초기 배포용) ---
+            USER_JPA_DDL_AUTO=${{ secrets.USER_JPA_DDL_AUTO }}
+            BOARD_JPA_DDL_AUTO=${{ secrets.BOARD_JPA_DDL_AUTO }}
+            POINT_JPA_DDL_AUTO=${{ secrets.POINT_JPA_DDL_AUTO }}
+
             # --- Kafka ---
             KAFKA_BOOTSTRAP_SERVERS=${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
 
