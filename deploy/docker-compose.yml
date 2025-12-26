@@ -3,8 +3,44 @@ services:
     image: ${DOCKERHUB_USERNAME}/api-gateway-service:${TAG}
     container_name: api-gateway
     ports:
-      - "8000:8000"       # 외부 공개: 게이트웨이만
+      - "8000:8000"
     env_file: .env
+    networks: [app-net]
+
+  user-db:
+    image: mysql:8.0
+    container_name: user-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${USER_DB_PASSWORD}
+      MYSQL_DATABASE: ${USER_DB_NAME}
+      MYSQL_USER: ${USER_DB_USERNAME}
+      MYSQL_PASSWORD: ${USER_DB_PASSWORD}
+    volumes:
+      - user_db_data:/var/lib/mysql
+    networks: [app-net]
+
+  board-db:
+    image: mysql:8.0
+    container_name: board-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${BOARD_DB_PASSWORD}
+      MYSQL_DATABASE: ${BOARD_DB_NAME}
+      MYSQL_USER: ${BOARD_DB_USERNAME}
+      MYSQL_PASSWORD: ${BOARD_DB_PASSWORD}
+    volumes:
+      - board_db_data:/var/lib/mysql
+    networks: [app-net]
+
+  point-db:
+    image: mysql:8.0
+    container_name: point-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${POINT_DB_PASSWORD}
+      MYSQL_DATABASE: ${POINT_DB_NAME}
+      MYSQL_USER: ${POINT_DB_USERNAME}
+      MYSQL_PASSWORD: ${POINT_DB_PASSWORD}
+    volumes:
+      - point_db_data:/var/lib/mysql
     networks: [app-net]
 
   user-service:
@@ -12,24 +48,29 @@ services:
     container_name: user-server
     env_file: .env
     networks: [app-net]
-    expose:
-      - "8080"            # 같은 네트워크 내부용(선택)
+    expose: ["8080"]
+    depends_on: [user-db]
 
   board-service:
     image: ${DOCKERHUB_USERNAME}/board-service:${TAG}
     container_name: board-server
     env_file: .env
     networks: [app-net]
-    expose:
-      - "8080"
+    expose: ["8080"]
+    depends_on: [board-db]
 
   point-service:
     image: ${DOCKERHUB_USERNAME}/point-service:${TAG}
     container_name: point-server
     env_file: .env
     networks: [app-net]
-    expose:
-      - "8080"
+    expose: ["8080"]
+    depends_on: [point-db]
+
+volumes:
+  user_db_data:
+  board_db_data:
+  point_db_data:
 
 networks:
   app-net:
